@@ -1,34 +1,22 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* We keep these styles for now, but will likely replace them with MUI Card/Paper later */
-.form-container, .list-container, .product-card, .dashboard-card {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  margin-bottom: 2rem;
-}
-
-.layout-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 2rem;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
 }
 
 a {
-  color: #2E7D32; /* Match our new primary theme color */
+  color: inherit;
   text-decoration: none;
 }
 
-a:hover {
-    text-decoration: underline;
+.MuiTableCell-root {
+  font-size: 0.95rem;
 }
 
-ul { list-style-type: none; padding: 0; }
-li { padding: 0.5rem; border-bottom: 1px solid #eee; }
-li:last-child { border-bottom: none; }
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cfcfcf;
+  border-radius: 10px;
+}

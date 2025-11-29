@@ -1,49 +1,98 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
+import React, { useState, useEffect, useMemo } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 import {
-  Box, Button, TextField, Typography, Card, CardContent, Modal, IconButton,
-  Autocomplete, Grid, FormControl, InputLabel, Select, MenuItem, List, ListItem, ListItemText,
-  Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle
-} from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EmptyState from '../components/EmptyState';
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  TextField,
+  Button,
+  Modal,
+  IconButton,
+  Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@mui/material";
+
+import { DataGrid } from "@mui/x-data-grid";
+
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import InventoryIcon from "@mui/icons-material/Inventory";
+
+import EmptyState from "../components/EmptyState";
 
 const modalStyle = {
-  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400,
-  bgcolor: 'background.paper', boxShadow: 24, p: 4, borderRadius: 2,
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 420,
+  bgcolor: "background.paper",
+  boxShadow: 24,
+  p: 4,
+  borderRadius: 3,
 };
 
 const initialNewProductState = {
-  productName: '', variantName: '', price: '', unit: 'piece', current_stock: 0,
+  productName: "",
+  variantName: "",
+  price: "",
+  unit: "piece",
+  current_stock: 0,
 };
 
-function ProductPage() {
+export default function ProductPage() {
   const [products, setProducts] = useState([]);
   const [editingVariant, setEditingVariant] = useState(null);
-  const [editVariantData, setEditVariantData] = useState({ price: '', current_stock: '' });
+  const [editVariantData, setEditVariantData] = useState({
+    price: "",
+    current_stock: "",
+  });
   const [newProductData, setNewProductData] = useState(initialNewProductState);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const fetchProducts = () => {
-    axios.get('http://localhost:8000/api/products/')
-      .then(res => setProducts(res.data))
-      .catch(() => toast.error('Failed to load products.'));
+    axios
+      .get("http://localhost:8000/api/products/")
+      .then((res) => setProducts(res.data))
+      .catch(() => toast.error("Failed to load products."));
   };
 
-  useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
-  const rows = useMemo(() => products.flatMap(product =>
-    product.variants.map(variant => ({
-      id: variant.id, productName: product.name, variantName: variant.name,
-      price: variant.price, currentStock: variant.current_stock, unit: variant.unit,
-      fullVariant: variant
-    }))
-  ), [products]);
+  const rows = useMemo(
+    () =>
+      products.flatMap((product) =>
+        product.variants.map((variant) => ({
+          id: variant.id,
+          productName: product.name,
+          variantName: variant.name,
+          price: variant.price,
+          currentStock: variant.current_stock,
+          unit: variant.unit,
+          fullVariant: variant,
+        }))
+      ),
+    [products]
+  );
 
   const handleOpenDialog = (id, type, name) => {
     setItemToDelete({ id, type, name });
@@ -59,146 +108,205 @@ function ProductPage() {
     if (!itemToDelete) return;
     const { id, type, name } = itemToDelete;
 
-    let deletePromise;
-    if (type === 'product') {
-      deletePromise = axios.delete(`http://localhost:8000/api/products/${id}/`);
-    } else {
-      deletePromise = axios.delete(`http://localhost:8000/api/variants/${id}/`);
-    }
+    const url =
+      type === "product"
+        ? `http://localhost:8000/api/products/${id}/`
+        : `http://localhost:8000/api/variants/${id}/`;
 
-    deletePromise
+    axios
+      .delete(url)
       .then(() => {
-        toast.success(`${type === 'product' ? 'Product' : 'Variant'} "${name}" deleted successfully!`);
+        toast.success(
+          `${type === "product" ? "Product" : "Variant"} "${name}" deleted`
+        );
         fetchProducts();
       })
-      .catch(() => {
-        toast.error(`Failed to delete ${type}. It may be linked to a sale record.`);
-      })
+      .catch(() =>
+        toast.error(`Failed to delete ${type}. It may have sale records.`)
+      )
       .finally(() => handleCloseDialog());
   };
 
   const handleNewProductChange = (e) => {
-    setNewProductData({ ...newProductData, [e.target.name]: e.target.value });
+    setNewProductData({
+      ...newProductData,
+      [e.target.name]: e.target.value,
+    });
   };
 
   const handleAddProductAndVariant = (e) => {
     e.preventDefault();
 
     const existingProduct = products.find(
-      p => p.name.toLowerCase() === newProductData.productName.toLowerCase()
+      (p) =>
+        p.name.toLowerCase() === newProductData.productName.toLowerCase().trim()
     );
 
-    let productPromise;
-    if (existingProduct) {
-      productPromise = Promise.resolve({ data: existingProduct });
-    } else {
-      productPromise = axios.post('http://localhost:8000/api/products/', { name: newProductData.productName });
-    }
+    const productPromise = existingProduct
+      ? Promise.resolve({ data: existingProduct })
+      : axios.post("http://localhost:8000/api/products/", {
+          name: newProductData.productName,
+        });
 
     productPromise
-      .then(response => {
+      .then((response) => {
         const productId = response.data.id;
+
         const variantPayload = {
           product: productId,
           name: newProductData.variantName,
           price: newProductData.price,
           unit: newProductData.unit,
-          current_stock: newProductData.current_stock
+          current_stock: newProductData.current_stock,
         };
-        return axios.post('http://localhost:8000/api/variants/', variantPayload);
+
+        return axios.post("http://localhost:8000/api/variants/", variantPayload);
       })
       .then(() => {
-        toast.success(`✅ Product "${newProductData.productName}" added successfully!`);
+        toast.success(`Product "${newProductData.productName}" added`);
         setNewProductData(initialNewProductState);
         fetchProducts();
       })
-      .catch(err => {
-        toast.error('❌ Failed to add product.');
-        console.error(err);
-      });
+      .catch(() => toast.error("Failed to add product"));
   };
 
   const handleEditClick = (row) => {
     setEditingVariant(row.fullVariant);
-    setEditVariantData({ price: row.price, current_stock: row.currentStock });
+    setEditVariantData({
+      price: row.price,
+      current_stock: row.currentStock,
+    });
   };
 
-  const handleUpdateVariant = async (e) => {
+  const handleUpdateVariant = (e) => {
     e.preventDefault();
-    try {
-      const updatedData = { ...editingVariant, ...editVariantData };
-      await axios.put(`http://localhost:8000/api/variants/${editingVariant.id}/`, updatedData);
-      toast.success(`✅ ${editingVariant.name} updated successfully!`);
-      setEditingVariant(null);
-      fetchProducts();
-    } catch (err) {
-      toast.error('❌ Failed to update variant.');
-      console.error(err);
-    }
+    axios
+      .put(
+        `http://localhost:8000/api/variants/${editingVariant.id}/`,
+        editVariantData
+      )
+      .then(() => {
+        toast.success(`${editingVariant.name} updated`);
+        setEditingVariant(null);
+        fetchProducts();
+      })
+      .catch(() => toast.error("Failed to update variant"));
   };
+
+  const productOptions = useMemo(
+    () => products.map((p) => ({ label: p.name })),
+    [products]
+  );
 
   const columns = [
-    { field: 'productName', headerName: 'Product', flex: 1 },
-    { field: 'variantName', headerName: 'Variant', flex: 1 },
-    { field: 'price', headerName: 'Price (₹)', type: 'number', flex: 0.5 },
-    { field: 'currentStock', headerName: 'Stock', type: 'number', flex: 0.5 },
+    { field: "productName", headerName: "Product", flex: 1 },
+    { field: "variantName", headerName: "Variant", flex: 1 },
+    { field: "price", headerName: "Price (₹)", flex: 0.6 },
+    { field: "currentStock", headerName: "Stock", flex: 0.6 },
     {
-      field: 'status', headerName: 'Status', flex: 0.7,
+      field: "status",
+      headerName: "Status",
+      flex: 0.7,
       renderCell: (params) => {
         const stock = params.row.currentStock;
-        let label, color;
-        if (stock <= 0) { label = 'Out of Stock'; color = 'error';
-        } else if (stock <= 10) { label = 'Low Stock'; color = 'warning';
-        } else { label = 'In Stock'; color = 'success'; }
-        return <Chip label={label} color={color} size="small" />;
-      }
+        if (stock <= 0) return <Chip label="Out of Stock" color="error" />;
+        if (stock <= 10) return <Chip label="Low Stock" color="warning" />;
+        return <Chip label="In Stock" color="success" />;
+      },
     },
     {
-      field: 'actions', headerName: 'Actions', type: 'actions', flex: 0.5,
-      getActions: (params) => [
-        <IconButton onClick={() => handleEditClick(params.row)}><EditIcon /></IconButton>,
-        <IconButton onClick={() => handleOpenDialog(params.id, 'variant', params.row.variantName)}><DeleteIcon color="error" /></IconButton>,
-      ]
-    }
+      field: "actions",
+      headerName: "Actions",
+      flex: 0.6,
+      renderCell: (params) => (
+        <>
+          <IconButton onClick={() => handleEditClick(params.row)}>
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            onClick={() =>
+              handleOpenDialog(params.id, "variant", params.row.variantName)
+            }
+          >
+            <DeleteIcon color="error" />
+          </IconButton>
+        </>
+      ),
+    },
   ];
 
-  const productOptions = useMemo(() => products.map(p => ({ label: p.name })), [products]);
-
   return (
-    <Box>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
-          <Typography variant="h2" gutterBottom>📦 Product Inventory</Typography>
+    <Box sx={{ pl: 3, pr: 4, width: "100%" }}>
+      {/* PAGE TITLE */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+        <InventoryIcon sx={{ fontSize: 36, mr: 1.2, color: "#0288D1" }} />
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          Product Inventory
+        </Typography>
+      </Box>
 
-          {/* ADD NEW PRODUCT */}
+      <Grid container spacing={3}>
+        {/* -------------------- LEFT AREA -------------------- */}
+        <Grid item xs={12} md={8}>
+          {/* Add New Product */}
           <Card sx={{ mb: 3 }}>
             <CardContent>
-              <Typography variant="h3" gutterBottom>Add New Product</Typography>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                Add New Product & Variant
+              </Typography>
+
               <Box component="form" onSubmit={handleAddProductAndVariant}>
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
                     <Autocomplete
                       freeSolo
                       options={productOptions}
                       value={newProductData.productName}
-                      onInputChange={(event, newInputValue) => {
-                        setNewProductData({ ...newProductData, productName: newInputValue });
-                      }}
+                      onInputChange={(e, v) =>
+                        setNewProductData({ ...newProductData, productName: v })
+                      }
                       renderInput={(params) => (
-                        <TextField {...params} label="Product Name (Select existing or type a new one)" required />
+                        <TextField
+                          {...params}
+                          label="Product Name"
+                          required
+                        />
                       )}
                     />
                   </Grid>
+
                   <Grid item xs={12} sm={6}>
-                    <TextField name="variantName" label="Variant Name" value={newProductData.variantName} onChange={handleNewProductChange} required fullWidth />
+                    <TextField
+                      label="Variant Name"
+                      name="variantName"
+                      required
+                      fullWidth
+                      value={newProductData.variantName}
+                      onChange={handleNewProductChange}
+                    />
                   </Grid>
+
                   <Grid item xs={12} sm={6}>
-                    <TextField name="price" label="Price" type="number" value={newProductData.price} onChange={handleNewProductChange} required fullWidth />
+                    <TextField
+                      label="Price (₹)"
+                      name="price"
+                      type="number"
+                      required
+                      fullWidth
+                      value={newProductData.price}
+                      onChange={handleNewProductChange}
+                    />
                   </Grid>
+
                   <Grid item xs={12} sm={4}>
                     <FormControl fullWidth>
                       <InputLabel>Unit</InputLabel>
-                      <Select name="unit" value={newProductData.unit} label="Unit" onChange={handleNewProductChange}>
+                      <Select
+                        name="unit"
+                        value={newProductData.unit}
+                        label="Unit"
+                        onChange={handleNewProductChange}
+                      >
                         <MenuItem value="piece">Piece</MenuItem>
                         <MenuItem value="kg">Kilogram</MenuItem>
                         <MenuItem value="packet">Packet</MenuItem>
@@ -206,54 +314,86 @@ function ProductPage() {
                       </Select>
                     </FormControl>
                   </Grid>
+
                   <Grid item xs={12} sm={4}>
-                    <TextField name="current_stock" label="Initial Stock" type="number" value={newProductData.current_stock} onChange={handleNewProductChange} required fullWidth />
+                    <TextField
+                      label="Initial Stock"
+                      name="current_stock"
+                      type="number"
+                      required
+                      fullWidth
+                      value={newProductData.current_stock}
+                      onChange={handleNewProductChange}
+                    />
                   </Grid>
+
                   <Grid item xs={12} sm={4}>
-                    <Button type="submit" variant="contained" fullWidth size="large">Add Product</Button>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      fullWidth
+                      size="large"
+                    >
+                      Add Product
+                    </Button>
                   </Grid>
                 </Grid>
               </Box>
             </CardContent>
           </Card>
 
-          {/* PRODUCT TABLE */}
+          {/* Product Table */}
           <Card>
-            <Box sx={{ height: 600, width: '100%' }}>
+            <Box sx={{ height: 600 }}>
               <DataGrid
                 rows={rows}
                 columns={columns}
+                disableRowSelectionOnClick
                 slots={{
-                  noRowsOverlay: () => <EmptyState title="No Products" message="Get started by adding a new product." />,
+                  noRowsOverlay: () => (
+                    <EmptyState
+                      title="No Products"
+                      message="Add a product to get started."
+                    />
+                  ),
                 }}
               />
             </Box>
           </Card>
         </Grid>
 
-        {/* CATEGORY LIST */}
+        {/* -------------------- RIGHT AREA -------------------- */}
         <Grid item xs={12} md={4}>
-          <Typography variant="h2" gutterBottom sx={{ color: 'transparent', userSelect: 'none' }}>.</Typography>
           <Card>
             <CardContent>
-              <Typography variant="h3" gutterBottom>Manage Categories</Typography>
-              {products.length > 0 ? (
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                Product Categories
+              </Typography>
+
+              {products.length ? (
                 <List>
                   {products.map((product) => (
                     <ListItem
                       key={product.id}
                       secondaryAction={
-                        <IconButton edge="end" onClick={() => handleOpenDialog(product.id, 'product', product.name)}>
+                        <IconButton
+                          onClick={() =>
+                            handleOpenDialog(product.id, "product", product.name)
+                          }
+                        >
                           <DeleteIcon color="error" />
                         </IconButton>
                       }
                     >
-                      <ListItemText primary={product.name} secondary={`${product.variants.length} variant(s)`} />
+                      <ListItemText
+                        primary={product.name}
+                        secondary={`${product.variants.length} variants`}
+                      />
                     </ListItem>
                   ))}
                 </List>
               ) : (
-                <Typography sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}>
+                <Typography sx={{ textAlign: "center", py: 2 }}>
                   No product categories yet.
                 </Typography>
               )}
@@ -265,28 +405,61 @@ function ProductPage() {
       {/* EDIT VARIANT MODAL */}
       <Modal open={!!editingVariant} onClose={() => setEditingVariant(null)}>
         <Box sx={modalStyle} component="form" onSubmit={handleUpdateVariant}>
-          <Typography variant="h6" component="h2" gutterBottom>Edit {editingVariant?.name}</Typography>
-          <TextField label="Price" type="number" value={editVariantData.price} onChange={e => setEditVariantData({...editVariantData, price: e.target.value})} fullWidth sx={{ mb: 2 }} />
-          <TextField label="Current Stock" type="number" value={editVariantData.current_stock} onChange={e => setEditVariantData({...editVariantData, current_stock: e.target.value})} fullWidth sx={{ mb: 2 }} />
-          <Button type="submit" variant="contained">Save Changes</Button>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Edit {editingVariant?.name}
+          </Typography>
+
+          <TextField
+            label="Price"
+            type="number"
+            fullWidth
+            sx={{ mb: 2 }}
+            value={editVariantData.price}
+            onChange={(e) =>
+              setEditVariantData({
+                ...editVariantData,
+                price: e.target.value,
+              })
+            }
+          />
+
+          <TextField
+            label="Current Stock"
+            type="number"
+            fullWidth
+            sx={{ mb: 2 }}
+            value={editVariantData.current_stock}
+            onChange={(e) =>
+              setEditVariantData({
+                ...editVariantData,
+                current_stock: e.target.value,
+              })
+            }
+          />
+
+          <Button type="submit" variant="contained" fullWidth>
+            Save Changes
+          </Button>
         </Box>
       </Modal>
 
       {/* DELETE CONFIRMATION DIALOG */}
       <Dialog open={dialogOpen} onClose={handleCloseDialog}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogTitle>Delete?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete the {itemToDelete?.type} "<strong>{itemToDelete?.name}</strong>"? This action cannot be undone.
+            Delete <strong>{itemToDelete?.name}</strong>? This action cannot be
+            undone.
           </DialogContentText>
         </DialogContent>
+
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleConfirmDelete} color="error" autoFocus>Delete</Button>
+          <Button onClick={handleConfirmDelete} color="error">
+            Delete
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
 }
-
-export default ProductPage;
